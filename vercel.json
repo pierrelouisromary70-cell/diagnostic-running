@@ -1,0 +1,7 @@
+{
+  "version": 2,
+  "outputDirectory": "public",
+  "functions": {
+    "api/chat.js": { "memory": 512, "maxDuration": 30 }
+  }
+}
