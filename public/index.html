@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#1D4ED8"/>
+<title>Diagnostic Running</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#fff;overscroll-behavior:none}
+button{font-family:inherit;cursor:pointer}
+input{font-family:inherit}
+.screen{display:none;flex-direction:column;min-height:100vh;max-width:430px;margin:0 auto}
+.screen.active{display:flex}
+.hero{background:linear-gradient(160deg,#1D4ED8,#3B82F6);padding:40px 24px 32px;text-align:center;flex-shrink:0}
+.hero-icon{width:68px;height:68px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:34px;margin:0 auto 14px}
+.hero h1{color:#fff;font-size:22px;font-weight:700;margin-bottom:8px}
+.hero p{color:#BFDBFE;font-size:13px;line-height:1.6}
+.stats{display:flex;gap:8px;justify-content:center;margin-top:16px;flex-wrap:wrap}
+.stat{background:rgba(255,255,255,.12);border-radius:10px;padding:6px 12px;text-align:center}
+.stat b{display:block;color:#fff;font-size:16px;font-weight:700}
+.stat small{display:block;color:#BFDBFE;font-size:10px}
+.body-scroll{flex:1;overflow-y:auto;padding:20px 16px 0;-webkit-overflow-scrolling:touch}
+.section-lbl{font-size:12px;color:#64748B;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px}
+.zone-row{display:flex;align-items:center;gap:12px;padding:11px 14px;background:#F8FAFC;border-radius:12px;border:1px solid #E2E8F0;margin-bottom:8px}
+.zi{font-size:22px;flex-shrink:0}
+.zt{font-size:13px;font-weight:600;color:#1E293B}
+.zs{font-size:11px;color:#64748B;margin-top:2px;line-height:1.4}
+.cta{padding:20px 16px 32px;flex-shrink:0}
+.btn-primary{width:100%;padding:15px;border-radius:14px;background:#1D4ED8;border:none;color:#fff;font-size:15px;font-weight:600}
+.btn-primary:active{background:#1E40AF}
+.disc{font-size:11px;color:#94A3B8;text-align:center;margin-top:12px;line-height:1.5;padding:0 8px}
+#screen-chat{flex-direction:column;height:100vh}
+.chat-header{background:#1D4ED8;padding:12px 16px 10px;flex-shrink:0}
+.hdr-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.hdr-title{display:flex;align-items:center;gap:8px;color:#fff;font-weight:600;font-size:15px}
+.btn-restart{background:rgba(255,255,255,.15);border:none;color:#fff;padding:6px 12px;border-radius:20px;font-size:12px}
+.phases-bar{display:flex;gap:4px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.phases-bar::-webkit-scrollbar{display:none}
+.phase-pill{font-size:11px;padding:3px 10px;border-radius:20px;white-space:nowrap;flex-shrink:0;background:rgba(255,255,255,.15);color:rgba(255,255,255,.8);border:none}
+.phase-pill.active{background:#fff;color:#1D4ED8;font-weight:600}
+.phase-pill.done{background:#BBF7D0;color:#065F46}
+.prog-wrap{height:3px;background:rgba(255,255,255,.2);border-radius:2px;margin-top:8px;overflow:hidden}
+.prog-fill{height:100%;background:#93C5FD;border-radius:2px;transition:width .5s ease;width:0%}
+#messages{flex:1;overflow-y:auto;padding:16px 14px 8px;display:flex;flex-direction:column;gap:12px;-webkit-overflow-scrolling:touch}
+.bubble{max-width:88%;display:flex;flex-direction:column}
+.bubble.bot{align-self:flex-start}
+.bubble.user{align-self:flex-end}
+.bbl{padding:10px 14px;border-radius:18px;font-size:14px;line-height:1.6}
+.bubble.bot .bbl{background:#F1F5F9;color:#1E293B;border-bottom-left-radius:4px}
+.bubble.user .bbl{background:#1D4ED8;color:#fff;border-bottom-right-radius:4px}
+.bubble.test .bbl{background:#FEF3C7;color:#78350F;border:1px solid #FDE68A;border-bottom-left-radius:4px}
+.typing-dots{display:flex;gap:5px;padding:12px 16px;background:#F1F5F9;border-radius:18px;border-bottom-left-radius:4px;align-items:center}
+.dot{width:7px;height:7px;border-radius:50%;background:#94A3B8;animation:pulse 1.2s infinite}
+.dot:nth-child(2){animation-delay:.15s}
+.dot:nth-child(3){animation-delay:.3s}
+@keyframes pulse{0%,60%,100%{transform:scale(1);opacity:.5}30%{transform:scale(1.35);opacity:1}}
+#choices{padding:8px 14px 4px;display:none;flex-direction:column;gap:8px;flex-shrink:0}
+.choice-btn{padding:13px 16px;border-radius:12px;border:1.5px solid #BFDBFE;background:#EFF6FF;color:#1D4ED8;font-size:14px;font-weight:500;text-align:left;line-height:1.4}
+.choice-btn:active{background:#DBEAFE}
+#input-area{padding:10px 14px;display:none;gap:8px;flex-shrink:0;border-top:1px solid #F1F5F9;align-items:center}
+#input-area input{flex:1;padding:12px 14px;border-radius:12px;border:1.5px solid #E2E8F0;font-size:15px;outline:none;background:#F8FAFC;color:#0F172A}
+#input-area input:focus{border-color:#93C5FD}
+#send-btn{width:48px;height:48px;border-radius:12px;background:#1D4ED8;border:none;color:#fff;font-size:22px;flex-shrink:0}
+#send-btn:active{background:#1E40AF}
+#loading-hint{padding:8px 14px;text-align:center;color:#94A3B8;font-size:12px;display:none;flex-shrink:0}
+#screen-diagnosis{min-height:100vh}
+.diag-hdr{background:#15803D;padding:14px 16px 12px;position:sticky;top:0;z-index:10;flex-shrink:0}
+.diag-hdr-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.diag-hdr-title{display:flex;align-items:center;gap:8px;color:#fff;font-weight:600;font-size:15px}
+.diag-summary{color:#BBF7D0;font-size:12px;line-height:1.5;margin-top:4px}
+#diag-content{flex:1;overflow-y:auto;padding:16px 14px 32px;display:flex;flex-direction:column;gap:12px;-webkit-overflow-scrolling:touch}
+.patho-card{border-radius:14px;overflow:hidden;border:1px solid #E2E8F0}
+.patho-card.primary{border:1.5px solid #BFDBFE}
+.ph{padding:14px 14px 0}
+.rank-lbl{font-size:11px;font-weight:600;margin-bottom:6px}
+.name-row{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px}
+.patho-name{font-size:15px;font-weight:700;color:#0F172A;line-height:1.3}
+.tbadge{font-size:11px;padding:3px 9px;border-radius:20px;white-space:nowrap;flex-shrink:0;font-weight:500}
+.conf-row{display:flex;align-items:center;gap:8px;padding-bottom:12px}
+.conf-track{flex:1;height:4px;background:#E2E8F0;border-radius:2px;overflow:hidden}
+.conf-fill{height:100%;border-radius:2px;transition:width .6s ease}
+.conf-pct{font-size:11px;font-weight:600;flex-shrink:0}
+.pdesc{font-size:13px;color:#475569;line-height:1.6;padding:0 14px 12px}
+.dg{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 14px;border-top:1px solid #F1F5F9}
+.dc{background:#F8FAFC;border-radius:8px;padding:8px 10px}
+.dc.full{grid-column:1/-1}
+.dlbl{font-size:10px;color:#94A3B8;margin-bottom:2px}
+.dval{font-size:11px;color:#334155;line-height:1.4}
+.accordion{border-top:1px solid #F1F5F9}
+.acc-btn{width:100%;padding:12px 14px;background:none;border:none;display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:600;text-align:left}
+.acc-btn .chev{font-size:16px;transition:transform .2s;display:inline-block}
+.acc-btn.open .chev{transform:rotate(180deg)}
+.acc-body{display:none;padding:0 14px 14px;flex-direction:column;gap:8px}
+.acc-body.open{display:flex}
+.phase-item{border-radius:10px;padding:10px 12px}
+.pnum-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.pnum{width:22px;height:22px;border-radius:50%;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ptitle{font-size:12px;font-weight:600}
+.pdur{font-size:11px;margin:1px 0}
+.plines{font-size:11px;line-height:1.55}
+.ex-item{background:#F0FDF4;border:1px solid #86EFAC;border-radius:10px;padding:11px 12px}
+.ex-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px}
+.ex-name{font-size:13px;font-weight:600;color:#14532D}
+.ex-ptag{font-size:10px;padding:2px 7px;border-radius:20px;background:#BBF7D0;color:#065F46;white-space:nowrap;flex-shrink:0}
+.ex-goal{font-size:12px;color:#166534;line-height:1.6;margin-bottom:6px;font-style:italic}
+.ex-how{font-size:12px;color:#166534;line-height:1.6;margin-bottom:8px}
+.ex-chips{display:flex;flex-wrap:wrap;gap:6px}
+.xchip{font-size:11px;padding:3px 9px;border-radius:20px;background:#DCFCE7;color:#166534;border:1px solid #86EFAC}
+.xchip.warn{background:#FEF3C7;color:#92400E;border-color:#FDE68A}
+.ex-prog{font-size:11px;color:#16A34A;margin-top:6px;line-height:1.4}
+.rf-box{background:#FFF1F2;border:1.5px solid #FDA4AF;border-radius:12px;padding:12px 14px}
+.rf-title{font-size:13px;font-weight:700;color:#BE123C;margin-bottom:6px}
+.rf-item{font-size:12px;color:#9F1239;padding:3px 0;display:flex;gap:8px;line-height:1.5}
+.reco-box{background:#F0FDF4;border:1px solid #86EFAC;border-radius:12px;padding:12px 14px}
+.reco-title{font-size:13px;font-weight:600;color:#15803D;margin-bottom:8px}
+.reco-item{font-size:12px;color:#14532D;padding:3px 0;display:flex;gap:8px;line-height:1.5}
+.disc-box{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;padding:12px 14px;font-size:12px;color:#64748B;line-height:1.5}
+.btn-new{width:100%;padding:14px;border-radius:12px;background:#F1F5F9;border:1px solid #E2E8F0;color:#475569;font-size:14px;font-weight:500}
+.btn-new:active{background:#E2E8F0}
+</style>
+</head>
+<body>
+
+<!-- ═══ ACCUEIL ═══ -->
+<div id="screen-welcome" class="screen active">
+  <div class="hero">
+    <div class="hero-icon">🏃</div>
+    <h1>Diagnostic Running</h1>
+    <p>Entonnoir clinique intelligent · 120+ pathologies · Plan de rééducation complet</p>
+    <div class="stats">
+      <div class="stat"><b>120+</b><small>pathologies</small></div>
+      <div class="stat"><b>7</b><small>zones</small></div>
+      <div class="stat"><b>8</b><small>types de tissus</small></div>
+      <div class="stat"><b>6</b><small>urgences</small></div>
+    </div>
+  </div>
+  <div class="body-scroll">
+    <div class="section-lbl">Zones couvertes</div>
+    <div class="zone-row"><span class="zi">🦶</span><div><div class="zt">Pied / Cheville</div><div class="zs">Achille · Haglund · Morton · Fasciite · Jones · Tunnel tarsien</div></div></div>
+    <div class="zone-row"><span class="zi">🦵</span><div><div class="zt">Jambe</div><div class="zs">Périostite · Loges · Mollet · SPE · Piégeage vasculaire</div></div></div>
+    <div class="zone-row"><span class="zi">🦵</span><div><div class="zt">Genou</div><div class="zs">LCA/LCP · IT Band · Ménisques · Rotulien · Patte d'oie</div></div></div>
+    <div class="zone-row"><span class="zi">🍑</span><div><div class="zt">Hanche / Cuisse</div><div class="zs">Piriforme · Méralgie · Col fémoral · Ischio-jambiers</div></div></div>
+    <div class="zone-row"><span class="zi">🫁</span><div><div class="zt">Dos / Rachis</div><div class="zs">Sciatique · Cruralgie · Hernie · Spondylolisthésis</div></div></div>
+    <div class="zone-row"><span class="zi">🔴</span><div><div class="zt">Systémique</div><div class="zs">Rhabdomyolyse · Hyponatrémie · Anémie · Coup de chaleur</div></div></div>
+  </div>
+  <div class="cta">
+    <button class="btn-primary" onclick="startDiagnosis()">🩺 Commencer le diagnostic</button>
+    <div class="disc">⚕ Outil informatif uniquement. Ne remplace pas un diagnostic médical professionnel.</div>
+  </div>
+</div>
+
+<!-- ═══ CHAT ═══ -->
+<div id="screen-chat" class="screen">
+  <div class="chat-header">
+    <div class="hdr-top">
+      <div class="hdr-title"><span>🩺</span> Diagnostic en cours</div>
+      <button class="btn-restart" onclick="restart()">↺ Recommencer</button>
+    </div>
+    <div class="phases-bar">
+      <span class="phase-pill active" id="p1">Localisation</span>
+      <span class="phase-pill" id="p2">Douleur</span>
+      <span class="phase-pill" id="p3">Contexte</span>
+      <span class="phase-pill" id="p4">Tests</span>
+      <span class="phase-pill" id="p5">Diagnostic</span>
+    </div>
+    <div class="prog-wrap"><div class="prog-fill" id="prog-fill"></div></div>
+  </div>
+  <div id="messages"></div>
+  <div id="choices"></div>
+  <div id="input-area">
+    <input type="text" id="text-input" placeholder="Décrivez vos symptômes…" enterkeyhint="send"/>
+    <button id="send-btn" onclick="sendText()">↑</button>
+  </div>
+  <div id="loading-hint">Analyse en cours…</div>
+</div>
+
+<!-- ═══ DIAGNOSTIC ═══ -->
+<div id="screen-diagnosis" class="screen">
+  <div class="diag-hdr">
+    <div class="diag-hdr-top">
+      <div class="diag-hdr-title"><span>✅</span> Résultat du diagnostic</div>
+      <button class="btn-restart" onclick="restart()">↺ Nouveau</button>
+    </div>
+    <div class="diag-summary" id="diag-summary"></div>
+  </div>
+  <div id="diag-content"></div>
+</div>
+
+<script>
+const SYSTEM_PROMPT = `Tu es un médecin du sport et kinésithérapeute expert en pathologies de la course à pied. Tu mènes un interrogatoire clinique rigoureux en français puis établis un diagnostic complet avec plan de rééducation détaillé.
+
+━━━ RÉFÉRENTIEL EXHAUSTIF DES PATHOLOGIES ━━━
+
+🦶 PIED & AVANT-PIED
+Tendineuses : tendinopathie achilléenne insertionnelle, tibial postérieur distal, tibial antérieur (insertion), long fléchisseur hallux (pied), long fléchisseur commun orteils, long extenseur hallux, long extenseur commun orteils, court fléchisseur orteils, court fibulaire (insertion 5e métatarse), long fibulaire (insertion 1er cunéiforme), ténosynovite des fléchisseurs/extenseurs
+Bursites : bursite sous-calcanéenne, bursite rétro-calcanéenne profonde, maladie de Haglund (exostose calcanéenne + bursite rétro-achilléenne), bursite inter-métatarsienne, bursite hallux valgus
+Ligamentaires/fasciaux : fasciite plantaire, aponévrosite plantaire chronique, rupture partielle fascia plantaire, entorse de Lisfranc, ligament spring, ligaments plantaires métatarsiens
+Nerveuses : névrome de Morton (2e-3e et 3e-4e espaces), syndrome tunnel tarsien postérieur, nerf calcanéen médial, nerf de Baxter, nerf sural, nerf fibulaire superficiel (dos du pied), nerf fibulaire profond (1er espace)
+Osseuses : fracture de stress 2e/3e métatarse, calcanéum, naviculaire (URGENCE), sésamoïdes, Jones (5e métatarse base)
+Articulaires : hallux valgus inflammatoire, hallux rigidus, maladie de Freiberg, maladie de Köhler, sinus du tarse, synovite métatarso-phalangienne
+
+🦵 CHEVILLE
+Tendineuses : tendinopathie achilléenne corporéale (2-6 cm au-dessus insertion), rupture partielle Achille, péritendinite achilléenne, tendinopathie tibial postérieur stade 1-2, tibial antérieur, long fléchisseur hallux, long fibulaire, court fibulaire (risque fissure longitudinale), subluxation/luxation tendons fibulaires, ténosynovite fibulaires
+Bursites : bursite rétro-achilléenne superficielle, bursite rétro-achilléenne profonde (sous-tendineuse)
+Ligamentaires : entorse LLE grade I/II/III (ATFL+CFL+PTFL), entorse LLI (deltoïde) grade I/II/III, syndesmose péronéo-tibiale inférieure, instabilité chronique latérale
+Nerveuses : tunnel tarsien postérieur, nerf sural, nerf fibulaire superficiel, nerf fibulaire profond
+Osseuses : fracture de stress péroné distal, talus, ostéochondrite disséquante du talus, syndrome de l'os trigone
+Articulaires : impingement antérieur de cheville, conflit postérieur, synovite antérieure, arthrose tibio-tarsienne débutante
+
+🦵 JAMBE
+Musculaires : déchirure gastrocnémien médial grade I/II/III (tennis leg), déchirure soléaire, déchirure plantaire grêle, contracture chronique mollet
+Tendineuses : tendinopathie achilléenne corporéale, péritendinite achilléenne
+Nerveuses : compression nerf fibulaire commun (SPE) au col du péroné, syndrome loge antérieure + irritation SPE, neuropathie nerf saphène, compression nerf tibial
+Osseuses : fracture de stress tibia face antérieure (peu urgente), face postérieure (URGENCE), fracture de stress péroné, syndrome stress tibial médial (MTSS/périostite/shin splints)
+Vasculaires : syndrome des loges chronique d'effort (SLCE) 4 loges, syndrome piégeage artère poplitée, thrombose veineuse profonde (TVP — urgence)
+
+🦵 GENOU
+Tendineuses/Bursites : tendinopathie rotulienne (pôle inférieur rotule), tendinopathie quadricipitale (pôle supérieur), syndrome patte d'oie, bursite pré-patellaire, bursite infra-patellaire, bursite poplitée, kyste de Baker, tendinopathie biceps fémoral, tendinopathie semi-membraneux, tendinopathie TFL (tubercule de Gerdy)
+Ligamentaires : entorse/rupture LCA, LCP, LLI, LLE, lésion méniscale interne (corne postérieure +++), lésion méniscale externe, kystes méniscaux
+Nerveuses : syndrome bandelette ilio-tibiale (SBIT/IT Band km 6-10), compression nerf fibulaire commun, neuropathie branche infra-patellaire nerf saphène, plica syndrome, syndrome Hoffa
+Osseuses/Cartilage : fracture de stress condyle fémoral, fracture de stress plateau tibial, chondromalacie rotulienne grades 1-4, ostéochondrite disséquante, Osgood-Schlatter, Sinding-Larsen-Johansson
+Articulaires : syndrome fémoro-patellaire, subluxation rotule, gonarthrose débutante, synovite du genou
+
+🍑 CUISSE
+Musculaires : déchirure ischio-jambiers grades I/II/III, syndrome hamstring proximal chronique, déchirure droit fémoral, déchirure adducteur long, déchirure gracilis, contracture psoas-iliaque
+Tendineuses : tendinopathie proximale ischio-jambiers (enthésopathie ischiatique), tendinopathie droit fémoral proximal (EIAI), tendinopathie adducteur long (insertion pubis), tendinopathie psoas-iliaque, tendinopathie TFL proximal, tendinopathie sartorius proximal (EIAS)
+Nerveuses : méralgie paresthésique (nerf cutané fémoral latéral), neuropathie nerf fémoral, syndrome canalaire nerf obturateur, branche cutanée postérieure nerf fémoral, nerf ilio-inguinal
+Osseuses : fracture de stress fémur diaphysaire, fracture de stress col fémoral (URGENCE ABSOLUE), avulsion EIAI, EIAS, ischiatique (adolescents)
+
+🍑 HANCHE & BASSIN
+Tendineuses : tendinopathie moyen fessier (insertion grand trochanter), tendinopathie grand fessier, tendinopathie piriforme, tendinopathie carré fémoral, tendinopathie obturateurs, tendinopathie psoas, tendinopathie adducteur magnus, ténosynovite iliopsoas
+Bursites : bursite trochantérienne, bursite iliopsoas (pré-articulaire), bursite ischiatique, bursite piriforme
+Ligamentaires/Articulaires : conflit fémoro-acétabulaire (FAI) type CAM/Pincer/mixte, lésion labrum acétabulaire (antérieur +++), coxarthrose débutante, nécrose aseptique tête fémorale
+Nerveuses : syndrome piriforme (compression nerf sciatique), méralgie paresthésique, neuropathie nerf obturateur, neuropathie nerf honteux interne/pudendal, canal d'Alcock, nerf cutané postérieur cuisse
+Osseuses : fracture de stress col fémoral (URGENCE ABSOLUE), fracture de stress branche ilio/ischio-pubienne, fracture de stress sacrum (URGENCE), ostéite pubienne, avulsions apophysaires adolescents
+Autres : syndrome de ressaut hanche interne (psoas), externe (TFL), pubalgie du sportif, hernie inguinale/fémorale du sportif
+
+🫁 DOS, RACHIS, BASSIN
+Musculaires : contracture paravertébraux lombaires, syndrome carré des lombes, syndrome myofascial lombo-pelvien, contracture psoas
+Discales/Ligamentaires : hernie discale L4-L5 (racine L5), hernie discale L5-S1 (racine S1), protrusion discale, fissure annulaire, entorse disco-ligamentaire lombaire
+Nerveuses : sciatique L4-L5, sciatique L5-S1, cruralgie L2-L3-L4, syndrome queue de cheval (URGENCE CHIRURGICALE), canal lombaire étroit, syndrome de Maigne (T12-L1)
+Osseuses/Articulaires : lombalgie mécanique fonctionnelle, spondylolisthésis (lyse isthmique L5), fracture de stress arc postérieur vertébral, fracture de stress sacrum, sacro-iléite biomécanique/inflammatoire, syndrome Bertolotti, facet syndrome
+
+🔴 PATHOLOGIES SYSTÉMIQUES
+Rhabdomyolyse d'effort (urines foncées + CPK élevé — URGENCE), syndrome de surentraînement/overtraining, anémie ferriprive (hémolyse plantaire), hyponatrémie d'effort (URGENCE), syndrome triade de la femme athlète/RED-S, crampes musculaires d'effort, coup de chaleur d'effort (URGENCE — hyperthermie > 40°C)
+
+━━━ PROTOCOLE D'INTERROGATOIRE (8-12 questions max) ━━━
+PHASE 1 — LOCALISATION : zone + latéralité (antérieur/postérieur/médial/latéral/diffus/bilatéral)
+PHASE 2 — CARACTÉRISATION : type douleur, EVA 1-10, irradiations précises
+PHASE 3 — CONTEXTE & TIMING : déclenchement, mécanisme, signes associés, durée et évolution
+PHASE 4 — TESTS FONCTIONNELS (1-2 tests selon zone)
+Pied : Windlass, compression métatarses, pointes monopodale, percussion calcanéum
+Cheville : Thompson (rupture Achille), tiroir antérieur (LLE), appui monopodal
+Jambe : percussion tibiale, effort 10 min + palpation loges
+Genou : McMurray (ménisque), Lachman (LCA), Ober (IT band), grinding rotule, step down test
+Hanche : FABER, FADIR, Pace (piriforme), palpation grand trochanter, Trendelenburg
+Dos : Lasègue, Wassermann (cruralgie), Gaenslen (sacro-iliaque)
+
+━━━ FORMAT JSON STRICT ━━━
+Réponds UNIQUEMENT en JSON valide, sans balises markdown, sans texte avant ou après.
+Format question : {"type":"question","phase":1,"text":"Question","choices":["choix1","choix2","choix3"],"progress":20}
+Format test clinique : {"type":"test","phase":4,"text":"Nom et objectif","instruction":"Description étape par étape","choices":["Positif - douleur reproduite","Négatif - aucune douleur","Douleur partielle","Impossible à réaliser"],"progress":72}
+Format diagnostic final : {"type":"diagnosis","summary":"Résumé 1-2 phrases","pathologies":[{"name":"Nom complet","tissue_type":"nerve|ligament|tendon|bursa|muscle|bone|cartilage|vascular|systemic|other","confidence":82,"likelihood":"high|medium|low","description":"Description 2-3 phrases","location":"Zone anatomique","mechanism":"Mécanisme","differentials":"Pathologies à distinguer","tests":"Tests confirmateurs en cabinet","specialist":"Spécialiste","immediate_action":"Action immédiate","phases":[{"number":1,"title":"Titre","duration":"Durée","objectives":"Objectifs","allowed":"Autorisé","forbidden":"Interdit"}],"exercises":[{"name":"Nom","phase":"Phase X","goal":"Objectif clinique","how":"Description complète de l'exécution","sets":"3 séries","reps":"12-15 répétitions","frequency":"1x/jour","progression":"Progression proposée","caution":"Avertissement"}]}],"red_flags":["signe alarme"],"recommendations":["conseil 1","conseil 2"]}
+RÈGLES : confidence entier 0-100 | 1-3 pathologies | 2-4 phases | 2-3 exercices sauf urgence/fracture stress/systémique | déclencher après 8-12 échanges`;
+
+const TISSUE = {
+  nerve:    {label:"Nerveux",      bg:"#FEF3C7",color:"#92400E",icon:"⚡"},
+  ligament: {label:"Ligamentaire", bg:"#D1FAE5",color:"#065F46",icon:"🔗"},
+  tendon:   {label:"Tendineux",    bg:"#DBEAFE",color:"#1E40AF",icon:"〰️"},
+  bursa:    {label:"Bursite",      bg:"#E0F2FE",color:"#0369A1",icon:"🫧"},
+  muscle:   {label:"Musculaire",   bg:"#F3F4F6",color:"#374151",icon:"💪"},
+  bone:     {label:"Osseux",       bg:"#FEE2E2",color:"#991B1B",icon:"🦴"},
+  cartilage:{label:"Cartilagineux",bg:"#EDE9FE",color:"#5B21B6",icon:"🔵"},
+  vascular: {label:"Vasculaire",   bg:"#FEF9C3",color:"#713F12",icon:"🩸"},
+  systemic: {label:"Systémique",   bg:"#FEE2E2",color:"#991B1B",icon:"🚨"},
+  other:    {label:"Autre",        bg:"#F3F4F6",color:"#374151",icon:"•"},
+};
+const PS = [
+  {},
+  {bg:"#EFF6FF",border:"#BFDBFE",nb:"#BFDBFE",nc:"#1D4ED8",tc:"#1E3A8A"},
+  {bg:"#F0FDF4",border:"#BBF7D0",nb:"#BBF7D0",nc:"#15803D",tc:"#14532D"},
+  {bg:"#FFFBEB",border:"#FDE68A",nb:"#FDE68A",nc:"#B45309",tc:"#78350F"},
+  {bg:"#FFF1F2",border:"#FECDD3",nb:"#FECDD3",nc:"#BE123C",tc:"#881337"},
+];
+
+let history=[], loading=false, curPhase=1;
+
+function show(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+function startDiagnosis(){
+  history=[];
+  document.getElementById("messages").innerHTML="";
+  document.getElementById("choices").innerHTML="";
+  document.getElementById("choices").style.display="none";
+  document.getElementById("input-area").style.display="none";
+  document.getElementById("prog-fill").style.width="0%";
+  curPhase=1;
+  const labels=["Localisation","Douleur","Contexte","Tests","Diagnostic"];
+  labels.forEach((lbl,i)=>{
+    const el=document.getElementById("p"+(i+1));
+    el.className="phase-pill"+(i===0?" active":"");
+    el.textContent=lbl;
+  });
+  show("screen-chat");
+  callAPI("Bonjour, je suis un coureur blessé. Aidez-moi à identifier ma blessure.",true);
+}
+
+function restart(){show("screen-welcome");}
+
+function setPhase(n){
+  if(n<=curPhase)return;
+  const prev=document.getElementById("p"+curPhase);
+  if(prev){prev.className="phase-pill done";prev.textContent="✓ "+prev.textContent.replace("✓ ","");}
+  curPhase=n;
+  const curr=document.getElementById("p"+n);
+  if(curr)curr.className="phase-pill active";
+}
+
+function addBubble(html,type){
+  const msgs=document.getElementById("messages");
+  const d=document.createElement("div");
+  d.className="bubble "+type;
+  d.innerHTML=`<div class="bbl">${html}</div>`;
+  msgs.appendChild(d);
+  msgs.scrollTop=msgs.scrollHeight;
+}
+function showTyping(){
+  const msgs=document.getElementById("messages");
+  const d=document.createElement("div");
+  d.id="typing";
+  d.innerHTML=`<div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
+  msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;
+}
+function hideTyping(){const e=document.getElementById("typing");if(e)e.remove();}
+
+function showChoices(arr){
+  const c=document.getElementById("choices");
+  c.innerHTML="";
+  if(!arr||!arr.length){c.style.display="none";return;}
+  arr.forEach(text=>{
+    const btn=document.createElement("button");
+    btn.className="choice-btn";btn.textContent=text;
+    btn.onclick=()=>pick(text);c.appendChild(btn);
+  });
+  c.style.display="flex";
+}
+
+function pick(text){
+  if(loading)return;
+  document.getElementById("choices").innerHTML="";
+  document.getElementById("choices").style.display="none";
+  document.getElementById("input-area").style.display="none";
+  addBubble(text,"user");callAPI(text);
+}
+
+function sendText(){
+  const inp=document.getElementById("text-input");
+  const val=inp.value.trim();if(!val||loading)return;
+  inp.value="";
+  document.getElementById("input-area").style.display="none";
+  document.getElementById("choices").style.display="none";
+  addBubble(val,"user");callAPI(val);
+}
+document.getElementById("text-input").addEventListener("keydown",e=>{if(e.key==="Enter")sendText();});
+
+async function apiFetch(msgs){
+  let r;
+  try {
+    r = await fetch("/api/chat",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({messages:msgs,system:SYSTEM_PROMPT})
+    });
+  } catch(e) {
+    throw new Error("Impossible de contacter le serveur. Vérifiez votre connexion internet. (" + e.message + ")");
+  }
+  let d;
+  try { d = await r.json(); } catch(e) { throw new Error("Réponse serveur invalide (code " + r.status + ")"); }
+  if (!r.ok) throw new Error(d.error || "Erreur serveur " + r.status);
+  return{text:d.content?.find(b=>b.type==="text")?.text||"",stop_reason:d.stop_reason};
+}
+
+async function callAPI(userMsg,isFirst){
+  loading=true;
+  if(!isFirst)history.push({role:"user",content:userMsg});
+  else history=[{role:"user",content:userMsg}];
+  document.getElementById("loading-hint").style.display="block";
+  showTyping();
+  try{
+    let{text:raw,stop_reason}=await apiFetch(history);
+    if(stop_reason==="max_tokens"||(raw.trim().startsWith("{")&&!raw.trim().endsWith("}"))){
+      const cont=await apiFetch([...history,{role:"assistant",content:raw},{role:"user",content:"Continue et termine le JSON exactement là où tu t'es arrêté."}]);
+      raw=raw+cont.text;
+    }
+    let parsed;
+    try{parsed=JSON.parse(raw.replace(/```json|```/g,"").trim());}
+    catch{
+      try{
+        const retry=await apiFetch([...history,{role:"user",content:"Génère le diagnostic final en JSON valide. Limite chaque champ à 1 phrase. UNIQUEMENT JSON valide."}]);
+        parsed=JSON.parse(retry.text.replace(/```json|```/g,"").trim());raw=retry.text;
+      }catch{
+        hideTyping();addBubble("Erreur lors du diagnostic. Appuyez sur Recommencer.","bot");
+        document.getElementById("loading-hint").style.display="none";loading=false;return;
+      }
+    }
+    history.push({role:"assistant",content:raw});
+    hideTyping();document.getElementById("loading-hint").style.display="none";
+    if(parsed.type==="diagnosis"){
+      document.getElementById("prog-fill").style.width="100%";setPhase(5);renderDiagnosis(parsed);
+    }else{
+      const prog=parsed.progress||Math.min(history.filter(h=>h.role==="user").length*10,88);
+      document.getElementById("prog-fill").style.width=prog+"%";
+      if(parsed.phase)setPhase(parsed.phase);
+      if(parsed.type==="test"){
+        addBubble(`<b>🧪 Test clinique</b><br>${parsed.text}<br><br><em>${parsed.instruction}</em>`,"test");
+      }else{addBubble(parsed.text,"bot");}
+      showChoices(parsed.choices||null);
+      if(!parsed.choices||!parsed.choices.length){
+        document.getElementById("input-area").style.display="flex";
+        setTimeout(()=>document.getElementById("text-input").focus(),100);
+      }
+    }
+  }catch(e){
+    hideTyping();addBubble("❌ " + (e.message||"Erreur inconnue") + "<br><small>Vérifiez que la clé API est bien configurée dans Vercel → Settings → Environment Variables.</small>","bot");
+    document.getElementById("loading-hint").style.display="none";
+  }
+  loading=false;
+}
+
+function renderDiagnosis(data){
+  document.getElementById("diag-summary").textContent=data.summary;
+  const c=document.getElementById("diag-content");c.innerHTML="";
+  if(data.red_flags?.length){
+    const b=mk("div","rf-box");
+    b.innerHTML=`<div class="rf-title">⚠️ Signes d'alarme — consultez en urgence</div>`+data.red_flags.map(r=>`<div class="rf-item"><span>⚠</span>${r}</div>`).join("");
+    c.appendChild(b);
+  }
+  data.pathologies.forEach((p,i)=>c.appendChild(buildCard(p,i)));
+  if(data.recommendations?.length){
+    const b=mk("div","reco-box");
+    b.innerHTML=`<div class="reco-title">✅ Recommandations générales</div>`+data.recommendations.map(r=>`<div class="reco-item"><span>→</span>${r}</div>`).join("");
+    c.appendChild(b);
+  }
+  const d=mk("div","disc-box");
+  d.textContent="⚕ Ce diagnostic est orientatif. Seul un examen clinique par un médecin du sport ou kinésithérapeute permet un diagnostic de certitude.";
+  c.appendChild(d);
+  const btn=mk("button","btn-new");btn.textContent="↺ Nouveau diagnostic";btn.onclick=restart;c.appendChild(btn);
+  show("screen-diagnosis");c.scrollTop=0;
+}
+
+function mk(tag,cls){const e=document.createElement(tag);if(cls)e.className=cls;return e;}
+
+function buildCard(p,rank){
+  const t=TISSUE[p.tissue_type]||TISSUE.other;
+  const isPri=rank===0;
+  const cc=p.likelihood==="high"?"#1D4ED8":p.likelihood==="medium"?"#D97706":"#94A3B8";
+  const rl=rank===0?"🎯 Diagnostic principal":rank===1?"🔸 Diagnostic secondaire":"🔹 À considérer";
+  const bg=isPri?"#EFF6FF":"#fff";
+  const card=mk("div","patho-card"+(isPri?" primary":""));
+  card.innerHTML=`
+    <div class="ph" style="background:${bg}">
+      <div class="rank-lbl" style="color:${isPri?"#3B82F6":"#64748B"}">${rl}</div>
+      <div class="name-row">
+        <div class="patho-name">${p.name}</div>
+        <span class="tbadge" style="background:${t.bg};color:${t.color}">${t.icon} ${t.label}</span>
+      </div>
+      <div class="conf-row">
+        <div class="conf-track"><div class="conf-fill" style="width:${p.confidence}%;background:${cc}"></div></div>
+        <span class="conf-pct" style="color:${cc}">${p.confidence}%</span>
+      </div>
+    </div>
+    <div class="pdesc" style="background:${bg}">${p.description}</div>
+    <div class="dg">
+      ${p.location?`<div class="dc"><div class="dlbl">📍 Zone</div><div class="dval">${p.location}</div></div>`:""}
+      ${p.mechanism?`<div class="dc"><div class="dlbl">⚙️ Mécanisme</div><div class="dval">${p.mechanism}</div></div>`:""}
+      ${p.differentials?`<div class="dc"><div class="dlbl">🔀 Diagnostics différentiels</div><div class="dval">${p.differentials}</div></div>`:""}
+      ${p.tests?`<div class="dc"><div class="dlbl">🔬 Tests en cabinet</div><div class="dval">${p.tests}</div></div>`:""}
+      ${p.specialist?`<div class="dc full"><div class="dlbl">👨‍⚕️ Spécialiste</div><div class="dval">${p.specialist}</div></div>`:""}
+      ${p.immediate_action?`<div class="dc full"><div class="dlbl">🚨 Action immédiate</div><div class="dval">${p.immediate_action}</div></div>`:""}
+    </div>`;
+  if(p.phases?.length)card.appendChild(accordion("📅 Plan de reprise ("+p.phases.length+" phases)","#1D4ED8",isPri,phasesHTML(p.phases)));
+  if(p.exercises?.length)card.appendChild(accordion("💪 Exercices ("+p.exercises.length+")","#15803D",isPri,exHTML(p.exercises)));
+  return card;
+}
+
+function accordion(title,color,open,bodyHTML){
+  const w=mk("div","accordion");
+  const btn=mk("button","acc-btn"+(open?" open":""));
+  btn.style.color=color;
+  btn.innerHTML=`<span>${title}</span><span class="chev">⌄</span>`;
+  const body=mk("div","acc-body"+(open?" open":""));
+  body.innerHTML=bodyHTML;
+  btn.onclick=()=>{
+    const o=body.classList.contains("open");
+    body.className="acc-body"+(o?"":" open");
+    btn.className="acc-btn"+(o?"":" open");
+    btn.style.color=color;
+  };
+  w.appendChild(btn);w.appendChild(body);return w;
+}
+
+function phasesHTML(phases){
+  return phases.map(ph=>{
+    const s=PS[ph.number]||PS[1];
+    return `<div class="phase-item" style="background:${s.bg};border:1px solid ${s.border}">
+      <div class="pnum-row">
+        <div class="pnum" style="background:${s.nb};color:${s.nc}">${ph.number}</div>
+        <div><div class="ptitle" style="color:${s.tc}">${ph.title}</div><div class="pdur" style="color:${s.nc}">⏱ ${ph.duration}</div></div>
+      </div>
+      <div class="plines" style="color:${s.tc}">
+        <div><strong>Objectif :</strong> ${ph.objectives}</div>
+        <div><strong>Autorisé :</strong> ${ph.allowed}</div>
+        <div><strong>À éviter :</strong> ${ph.forbidden}</div>
+      </div></div>`;
+  }).join("");
+}
+
+function exHTML(exercises){
+  return exercises.map(ex=>`
+    <div class="ex-item">
+      <div class="ex-top"><div class="ex-name">🏋️ ${ex.name}</div><span class="ex-ptag">${ex.phase}</span></div>
+      <div class="ex-goal">Objectif : ${ex.goal}</div>
+      <div class="ex-how">${ex.how}</div>
+      <div class="ex-chips">
+        ${ex.sets?`<span class="xchip">${ex.sets}</span>`:""}
+        ${ex.reps?`<span class="xchip">${ex.reps}</span>`:""}
+        ${ex.frequency?`<span class="xchip">${ex.frequency}</span>`:""}
+        ${ex.caution?`<span class="xchip warn">⚠ ${ex.caution}</span>`:""}
+      </div>
+      ${ex.progression?`<div class="ex-prog">↗ ${ex.progression}</div>`:""}
+    </div>`).join("");
+}
+</script>
+</body>
+</html>
